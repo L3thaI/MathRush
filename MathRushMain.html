@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math Dash: Arcade Fixed</title>
+    <style>
+        :root {
+            --primary: #00f2fe;
+            --secondary: #4facfe;
+            --success: #00ff88;
+            --danger: #ff4b2b;
+            --bg: #0b0e14;
+        }
+
+        body {
+            background-color: var(--bg);
+            background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+            color: white;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 30px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+        }
+
+        #Game, #Results { display: none; }
+
+        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 2px; background: linear-gradient(to bottom, #fff, #888); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Notification Pop-up */
+        #notification {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            z-index: 100;
+        }
+        #notification.show { top: 20px; opacity: 1; }
+
+        /* Buttons */
+        .btn {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 1.1rem;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+        }
+        .btn:hover { background: var(--secondary); transform: scale(1.02); }
+
+        /* Game UI */
+        #Problem { font-size: 5rem; font-weight: 900; margin: 10px 0; text-shadow: 0 0 20px rgba(0,242,254,0.3); transition: transform 0.1s; }
+        #answerInput {
+            background: rgba(255,255,255,0.05); border-radius: 10px; color: var(--primary); font-size: 2.5rem; font-weight: bold; width: 100%; text-align: center; outline: none; border: none; margin-bottom: 10px; pointer-events: none;
+        }
+
+        /* Numpad */
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .num-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 15px; font-size: 1.5rem; border-radius: 12px; cursor: pointer; }
+        .num-btn:active { background: var(--primary); color: black; }
+
+        /* Progress */
+        .progress-bar { width: 100%; height: 6px; background: #222; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+        #progress-fill { width: 0%; height: 100%; background: var(--success); transition: 0.3s; }
+
+        /* Shake Effect */
+        .shake { animation: shake 0.4s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        #score-list div {
+            background: rgba(255,255,255,0.05); margin: 5px 0; padding: 8px; border-radius: 8px; display: flex; justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="main-card">
+        <div id="notification">Correct!</div>
+
+        <div id="Menu">
+            <h1>Math Dash</h1>
+            <p style="opacity: 0.6">Test your speed.</p>
+            <button class="btn" onclick="startGame(10)">EASY</button>
+            <button class="btn" onclick="startGame(50)">MEDIUM</button>
+            <button class="btn" onclick="startGame(100)">HARD</button>
+        </div>
+
+        <div id="Game">
+            <div class="progress-bar"><div id="progress-fill"></div></div>
+            <div id="Problem">--</div>
+            <input type="text" id="answerInput" readonly placeholder="?">
+            <div class="numpad">
+                <button class="num-btn" onclick="press(1)">1</button>
+                <button class="num-btn" onclick="press(2)">2</button>
+                <button class="num-btn" onclick="press(3)">3</button>
+                <button class="num-btn" onclick="press(4)">4</button>
+                <button class="num-btn" onclick="press(5)">5</button>
+                <button class="num-btn" onclick="press(6)">6</button>
+                <button class="num-btn" onclick="press(7)">7</button>
+                <button class="num-btn" onclick="press(8)">8</button>
+                <button class="num-btn" onclick="press(9)">9</button>
+                <button class="num-btn" onclick="press('C')" style="color: var(--danger)">C</button>
+                <button class="num-btn" onclick="press(0)">0</button>
+                <button class="num-btn" onclick="press('-')">-</button>
+            </div>
+        </div>
+
+        <div id="Results">
+            <h1 id="res-header">Finish!</h1>
+            <h2 id="final-time" style="font-size: 3rem; color: var(--success);">0.00s</h2>
+            <div id="score-list-container">
+                <p style="font-size: 0.8rem; opacity: 0.5;">TOP SCORES</p>
+                <div id="score-list"></div>
+            </div>
+            <button class="btn" style="background: var(--primary); color: black; font-weight: bold;" onclick="resetToMenu()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+<script>
+    let maxNumber = 10, currentQuestion = 0, correctAnswer = 0, startTime = 0;
+    let scores = []; // This array now stays alive!
+
+    function showNotification(text, color) {
+        const notif = document.getElementById('notification');
+        notif.innerText = text;
+        notif.style.backgroundColor = color;
+        notif.classList.add('show');
+        setTimeout(() => notif.classList.remove('show'), 800);
+    }
+
+    function startGame(max) {
+        maxNumber = max;
+        currentQuestion = 0;
+        document.getElementById('Menu').style.display = 'none';
+        document.getElementById('Game').style.display = 'block';
+        document.getElementById('Results').style.display = 'none';
+        nextQuestion();
+    }
+
+    function nextQuestion() {
+        if (currentQuestion >= 10) {
+            endGame();
+            return;
+        }
+        
+        currentQuestion++;
+        document.getElementById('progress-fill').style.width = (currentQuestion * 10) + "%";
+        
+        if (currentQuestion === 1) startTime = Date.now();
+
+        let n1 = Math.floor(Math.random() * maxNumber) + 1;
+        let n2 = Math.floor(Math.random() * maxNumber) + 1;
+        let isPlus = Math.random() > 0.5;
+
+        if (!isPlus && n1 < n2) [n1, n2] = [n2, n1];
+        correctAnswer = isPlus ? n1 + n2 : n1 - n2;
+        
+        document.getElementById('Problem').innerText = `${n1}${isPlus ? '+' : '-'}${n2}`;
+        document.getElementById('answerInput').value = '';
+    }
+
+    function press(val) {
+        const input = document.getElementById('answerInput');
+        if (val === 'C') input.value = '';
+        else if (val === '-') input.value = input.value.includes('-') ? input.value.replace('-', '') : '-' + input.value;
+        else input.value += val;
+
+        // Check as soon as the length matches
+        if (input.value === correctAnswer.toString()) {
+            showNotification("Correct!", "var(--success)");
+            // Small delay so they can see the notification
+            setTimeout(nextQuestion, 200); 
+        } else if (input.value.length >= correctAnswer.toString().length && input.value !== "-" && !correctAnswer.toString().startsWith(input.value)) {
+            // Only trigger "Wrong" if it's definitely not the start of the right answer
+            showNotification("Wrong!", "var(--danger)");
+            document.getElementById('main-card').classList.add('shake');
+            input.value = '';
+            setTimeout(() => document.getElementById('main-card').classList.remove('shake'), 400);
+        }
+    }
+
+    function endGame() {
+        const time = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+        document.getElementById('Game').style.display = 'none';
+        document.getElementById('Results').style.display = 'block';
+        document.getElementById('final-time').innerText = time + "s";
+
+        // ADD TO ARRAY AND SORT
+        scores.push(time);
+        scores.sort((a, b) => a - b);
+
+        // DISPLAY LIST
+        const list = document.getElementById('score-list');
+        list.innerHTML = scores.slice(0, 5).map((s, i) => 
+            `<div><span>Rank ${i+1}</span> <span>${s}s</span></div>`
+        ).join('');
+    }
+
+    function resetToMenu() {
+        // We do NOT use location.reload() here.
+        // We just toggle the screens so 'scores' array is preserved.
+        document.getElementById('Results').style.display = 'none';
+        document.getElementById('Menu').style.display = 'block';
+        document.getElementById('progress-fill').style.width = "0%";
+    }
+</script>
+</body>
+</html>
